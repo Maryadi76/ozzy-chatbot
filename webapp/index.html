@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ozzy Chat Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --paper:#F2F0E9; --card:#FBFAF6; --ink:#0B0B0D; --muted:#5E5C57; --line:#D9D5C9;
+  --blue:#1E34E0; --volt:#FFD31F; --ember:#EA3324; --green:#1B7F3B;
+  --display:"Anton", Impact, "Arial Narrow", sans-serif;
+  --body:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; min-height:100%; }
+body { background:var(--paper); color:var(--ink); font:14px/1.5 var(--body); -webkit-font-smoothing:antialiased; }
+button, input, textarea, select { font:inherit; color:inherit; }
+button { cursor:pointer; }
+:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+h1, h2, h3 { margin:0; }
+[hidden] { display:none !important; }
+
+/* ---------- umum ---------- */
+.btn { border:1px solid var(--ink); background:#fff; padding:7px 14px; border-radius:8px; font-weight:600; font-size:13px; }
+.btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+.btn.danger { border-color:var(--ember); color:var(--ember); }
+.btn.small { padding:4px 10px; font-size:12px; }
+.btn:disabled { opacity:.5; cursor:default; }
+.muted { color:var(--muted); } .small { font-size:12.5px; }
+.pill { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+.pill.bot { background:var(--volt); } .pill.human { background:var(--ember); color:#fff; }
+.pill.offer { background:var(--blue); color:#fff; } .pill.wait { background:#fff; color:var(--ember); box-shadow:inset 0 0 0 1.5px var(--ember); }
+.pill.off { background:var(--line); }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; }
+.card h3 { font-size:11.5px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+input[type=text], input[type=email], input[type=password], input[type=number], textarea, select {
+  width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 11px; background:#fff; }
+input:focus, textarea:focus, select:focus { outline:none; border-color:var(--blue); }
+textarea { resize:vertical; line-height:1.5; }
+label.f { display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:600; }
+label.f small { font-weight:400; color:var(--muted); }
+.toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:10px; font-size:13px; z-index:50; max-width:calc(100% - 32px); }
+.toast.err { background:var(--ember); color:#fff; }
+.empty { color:var(--muted); text-align:center; padding:30px 10px; }
+code { font-family:var(--mono); font-size:12px; background:#EEEBE3; padding:1px 5px; border-radius:4px; overflow-wrap:anywhere; }
+
+/* ---------- login ---------- */
+.login { min-height:100vh; display:grid; place-items:center; padding:16px; }
+.login .box { width:min(400px,100%); background:var(--card); border:1px solid var(--ink); border-radius:16px; box-shadow:6px 6px 0 var(--ink); padding:24px; display:flex; flex-direction:column; gap:14px; }
+.logo { font-family:var(--display); font-size:28px; line-height:1; background:var(--blue); color:var(--paper); padding:6px 10px 4px; display:inline-block; }
+.login h1 { font-family:var(--display); font-weight:400; font-size:24px; text-transform:uppercase; letter-spacing:.5px; }
+.login .switch { font-size:12.5px; color:var(--muted); }
+.login .switch button { border:0; background:none; color:var(--blue); font-weight:600; padding:0; }
+
+/* ---------- shell ---------- */
+.top { background:var(--ink); color:var(--paper); padding:12px 20px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:5; }
+.brandmark { display:flex; gap:12px; align-items:center; }
+.brandmark h1 { font-family:var(--display); font-weight:400; font-size:19px; text-transform:uppercase; letter-spacing:.6px; }
+.nav { display:flex; gap:2px; flex-wrap:wrap; }
+.nav button { border:0; background:transparent; color:#CFCBC1; padding:7px 12px; border-radius:999px; font-weight:600; font-size:13px; }
+.nav button[aria-current="true"] { background:var(--paper); color:var(--ink); }
+.nav .count { display:inline-block; min-width:18px; padding:0 5px; margin-left:4px; border-radius:999px; background:var(--ember); color:#fff; font-size:11px; line-height:18px; text-align:center; }
+.userbox { display:flex; gap:10px; align-items:center; font-size:12.5px; color:#B9B6AD; }
+.userbox .btn { background:transparent; color:var(--paper); border-color:#6A675F; }
+main { max-width:1340px; margin:0 auto; padding:20px; }
+@media (max-width:700px) { main { padding:12px; } .top { padding:10px 12px; } }
+.page-head { display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.page-head h2 { font-family:var(--display); font-weight:400; font-size:24px; text-transform:uppercase; letter-spacing:.5px; }
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px; background:#fff; flex-wrap:wrap; }
+.seg button { border:0; background:transparent; color:var(--muted); padding:5px 12px; border-radius:999px; font-size:12.5px; font-weight:600; }
+.seg button[aria-checked="true"] { background:var(--ink); color:var(--paper); }
+
+/* ---------- inbox ---------- */
+.inbox { display:grid; grid-template-columns:330px minmax(0,1fr) 300px; gap:16px; align-items:start; }
+@media (max-width:1150px) { .inbox { grid-template-columns:300px minmax(0,1fr); } .inbox .side { grid-column:1 / -1; } }
+@media (max-width:760px) { .inbox { grid-template-columns:minmax(0,1fr); } .inbox.open .list { display:none; } .inbox:not(.open) .thread, .inbox:not(.open) .side { display:none; } }
+.list { background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.list .filters { padding:10px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.convs { max-height:calc(100vh - 230px); overflow-y:auto; }
+.conv { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #EEEBE3; background:#fff; padding:10px 12px; }
+.conv[aria-current="true"] { background:#EEF0FD; box-shadow:inset 3px 0 0 var(--blue); }
+.conv .row1 { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+.conv strong { font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.conv .meta { font-size:11.5px; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:2px; flex-wrap:wrap; }
+.conv .prev { font-size:12.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+.ch { font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:5px; color:#fff; }
+.ch.instagram { background:#C13584; } .ch.messenger { background:#0866FF; } .ch.whatsapp { background:#25D366; color:#0B0B0D; }
+.thread { background:#fff; border:1px solid var(--line); border-radius:12px; display:flex; flex-direction:column; height:calc(100vh - 130px); min-height:480px; }
+.thread-head { padding:12px 14px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; }
+.thread-head .who { display:flex; gap:8px; align-items:center; min-width:0; }
+.thread-head .who strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:6px; background:#FAF9F5; }
+.msg { display:flex; flex-direction:column; max-width:78%; }
+.msg .bubble { padding:8px 12px; border-radius:16px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.msg .meta { font-size:10.5px; color:var(--muted); margin:2px 8px 4px; }
+.msg.user { align-self:flex-start; } .msg.user .bubble { background:#fff; border:1px solid var(--line); border-bottom-left-radius:5px; }
+.msg.bot, .msg.admin { align-self:flex-end; align-items:flex-end; }
+.msg.bot .bubble { background:#E6E9FC; border-bottom-right-radius:5px; }
+.msg.admin .bubble { background:var(--ink); color:var(--paper); border-bottom-right-radius:5px; }
+.attach { display:inline-block; font-size:11px; font-weight:600; background:rgba(0,0,0,.08); border-radius:5px; padding:0 6px; margin-bottom:3px; }
+.reply { border-top:1px solid var(--line); padding:10px; display:flex; gap:8px; align-items:flex-end; }
+.reply textarea { min-height:42px; max-height:140px; }
+.side { display:flex; flex-direction:column; gap:12px; }
+dl.lead { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0; font-size:13px; }
+dl.lead dt { color:var(--muted); } dl.lead dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
+dl.lead dd.empty { color:#B3AFA5; font-weight:400; }
+.intent { display:inline-block; font-family:var(--mono); font-size:12px; background:#EEF0FD; color:var(--blue); border-radius:6px; padding:1px 7px; }
+.esc { border-top:1px solid #EEEBE3; padding:8px 0; display:flex; flex-direction:column; gap:4px; font-size:12.5px; }
+.esc:first-child { border-top:0; padding-top:0; }
+
+/* ---------- simulator ---------- */
+.sim { display:grid; grid-template-columns:minmax(320px,400px) minmax(0,1fr); gap:20px; align-items:start; }
+@media (max-width:900px) { .sim { grid-template-columns:minmax(0,1fr); } }
+.phone { --chat-bg:#fff; --me-bg:#7A3FF2; --me-fg:#fff; --them-bg:#EFEFEF; --head-bg:#fff;
+  background:var(--chat-bg); border:1px solid var(--ink); border-radius:26px; overflow:hidden; display:flex; flex-direction:column; height:680px; box-shadow:6px 6px 0 var(--ink); }
+.phone[data-channel="messenger"] { --me-bg:#0866FF; --them-bg:#F0F0F0; }
+.phone[data-channel="whatsapp"] { --chat-bg:#EFEAE2; --me-bg:#D9FDD3; --me-fg:var(--ink); --them-bg:#fff; --head-bg:#F0F2F5; }
+.phone-head { background:var(--head-bg); border-bottom:1px solid rgba(0,0,0,.08); padding:12px 16px; display:flex; gap:10px; align-items:center; }
+.avatar { width:34px; height:34px; border-radius:50%; background:var(--blue); color:#fff; display:grid; place-items:center; font-family:var(--display); flex:none; }
+.pchat { flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:6px; }
+.pmsg { display:flex; flex-direction:column; max-width:82%; }
+.pmsg .bubble { padding:8px 12px; border-radius:18px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.pmsg .meta { font-size:10.5px; color:var(--muted); margin:2px 8px 4px; }
+.pmsg.customer { align-self:flex-end; align-items:flex-end; } .pmsg.customer .bubble { background:var(--me-bg); color:var(--me-fg); }
+.pmsg.bot { align-self:flex-start; } .pmsg.bot .bubble { background:var(--them-bg); }
+.qr { align-self:flex-end; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; margin:2px 0 6px; }
+.qr button { border:1.5px solid var(--me-bg); color:var(--me-bg); background:#fff; border-radius:999px; padding:5px 12px; font-size:13px; font-weight:600; }
+.phone[data-channel="whatsapp"] .qr button { color:#027EB5; border-color:#fff; }
+.note { align-self:center; font-size:11.5px; color:var(--muted); background:rgba(255,255,255,.85); border:1px solid var(--line); border-radius:12px; padding:3px 12px; margin:4px 0; text-align:center; max-width:94%; }
+.note.warn { border-color:var(--ember); color:var(--ember); }
+.typing { align-self:flex-start; background:var(--them-bg); border-radius:18px; padding:10px 14px; display:flex; gap:4px; }
+.typing i { width:6px; height:6px; border-radius:50%; background:#8E8B84; animation:blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay:.2s; } .typing i:nth-child(3) { animation-delay:.4s; }
+@keyframes blink { 0%,80%,100% { opacity:.25; } 40% { opacity:1; } }
+.chips { display:flex; gap:6px; overflow-x:auto; padding:8px 12px; border-top:1px solid rgba(0,0,0,.08); background:var(--head-bg); }
+.chips button { flex:none; border:1px solid #CFCBC1; background:#fff; border-radius:999px; padding:4px 11px; font-size:12px; }
+.composer { display:flex; gap:8px; padding:10px 12px 12px; background:var(--head-bg); }
+pre.dark { margin:0; font:12.5px/1.55 var(--mono); white-space:pre-wrap; overflow-wrap:anywhere; background:var(--ink); color:#EDEAE2; border-radius:8px; padding:12px 14px; max-height:560px; overflow:auto; }
+
+/* ---------- KB, form, akun ---------- */
+.stack { display:flex; flex-direction:column; gap:12px; }
+.kb-item { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+.kb-item.isi { box-shadow:inset 4px 0 0 var(--ember); } .kb-item.off { opacity:.55; }
+.kb-row { display:grid; grid-template-columns:140px minmax(0,1fr) auto auto; gap:8px; align-items:center; }
+@media (max-width:600px) { .kb-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
+.flag { font-size:11px; font-weight:700; color:var(--ember); }
+.check { display:inline-flex; gap:6px; align-items:center; font-size:12.5px; white-space:nowrap; font-weight:500; }
+.form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+@media (max-width:700px) { .form { grid-template-columns:minmax(0,1fr); } }
+.form .full { grid-column:1 / -1; }
+.toggle { display:flex; gap:10px; align-items:flex-start; border:1.5px solid var(--line); border-radius:10px; padding:10px 14px; background:#fff; font-weight:600; }
+.toggle:has(input:checked) { border-color:var(--blue); }
+.toggle input { margin-top:4px; } .toggle small { display:block; color:var(--muted); font-weight:400; font-size:12px; }
+table.t { width:100%; border-collapse:collapse; font-size:13px; }
+table.t th { text-align:left; font-weight:600; color:var(--muted); border-bottom:1px solid var(--line); padding:6px 8px; white-space:nowrap; }
+table.t td { border-bottom:1px solid #EEEBE3; padding:8px; vertical-align:middle; }
+.tablewrap { overflow-x:auto; }
+.ok { color:var(--green); font-weight:600; } .err { color:var(--ember); font-weight:600; }
+.grid2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
+@media (max-width:900px) { .grid2 { grid-template-columns:minmax(0,1fr); } }
+ol.steps { margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<section class="login" id="v-login" hidden>
+  <form class="box" id="f-login">
+    <div><span class="logo">OZZY</span></div>
+    <h1 id="login-title">Masuk admin chat</h1>
+    <p class="muted small" style="margin:0" id="login-desc">Khusus email yang terdaftar sebagai admin.</p>
+    <label class="f">Email<input type="email" id="l-email" autocomplete="username" required></label>
+    <label class="f">Password<input type="password" id="l-pass" autocomplete="current-password" minlength="8" required></label>
+    <button class="btn primary" id="l-submit">Masuk</button>
+    <p class="small" id="l-msg" style="margin:0"></p>
+    <p class="switch" id="l-switch">Pertama kali? <button type="button" data-mode="signup">Buat password untuk email admin</button></p>
+  </form>
+</section>
+
+<!-- ================= APP ================= -->
+<div id="v-app" hidden>
+  <header class="top">
+    <div class="brandmark"><span class="logo" style="font-size:22px">OZZY</span><h1>Chat Admin</h1></div>
+    <nav class="nav" id="nav">
+      <button data-page="inbox" aria-current="true">Inbox <span class="count" id="n-wait" hidden></span></button>
+      <button data-page="sim">Simulator</button>
+      <button data-page="kb">Knowledge base <span class="count" id="n-isi" hidden></span></button>
+      <button data-page="setting">Pengaturan bot</button>
+      <button data-page="akun">Akun sosmed</button>
+      <button data-page="api">Pengaturan API <span class="count" id="n-api" hidden>!</span></button>
+      <button data-page="status">Status &amp; admin</button>
+    </nav>
+    <div class="userbox"><span id="u-email"></span><button class="btn small" id="b-logout">Keluar</button></div>
+  </header>
+
+  <main>
+    <!-- ---------- INBOX ---------- -->
+    <section data-view="inbox">
+      <div class="inbox" id="inbox">
+        <div class="list">
+          <div class="filters">
+            <select id="i-brand" aria-label="Brand"></select>
+            <div class="seg" role="radiogroup" aria-label="Filter status" id="i-filter">
+              <button role="radio" data-f="semua" aria-checked="true">Semua</button>
+              <button role="radio" data-f="perlu">Perlu admin</button>
+              <button role="radio" data-f="human">Admin</button>
+              <button role="radio" data-f="bot">Bot</button>
+            </div>
+          </div>
+          <div class="convs" id="i-list"></div>
+        </div>
+        <div class="thread" id="i-thread"><div class="empty">Pilih percakapan di kiri.</div></div>
+        <aside class="side" id="i-side"></aside>
+      </div>
+    </section>
+
+    <!-- ---------- SIMULATOR ---------- -->
+    <section data-view="sim" hidden>
+      <div class="page-head">
+        <h2>Simulator</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="s-brand" aria-label="Brand" style="width:auto"></select>
+          <select id="s-channel" aria-label="Channel" style="width:auto">
+            <option value="instagram">Instagram DM</option><option value="messenger">Messenger</option><option value="whatsapp">WhatsApp</option>
+          </select>
+          <button class="btn" id="s-reset">Mulai ulang</button>
+        </div>
+      </div>
+      <div class="sim">
+        <div class="phone" id="s-phone" data-channel="instagram">
+          <div class="phone-head"><div class="avatar" id="s-avatar">O</div><div><strong id="s-name">ozzy.clothing</strong><div class="small muted">simulasi · tidak terkirim ke customer</div></div></div>
+          <div class="pchat" id="s-chat"></div>
+          <div class="chips" id="s-chips"></div>
+          <form class="composer" id="s-form"><input type="text" id="s-input" placeholder="Ketik sebagai customer…" autocomplete="off"><button class="btn primary">Kirim</button></form>
+        </div>
+        <div class="stack">
+          <div class="card"><h3>Hasil analisis terakhir</h3><div id="s-analisis" class="small muted">Kirim pesan sebagai customer. Balasan dibuat AI dengan prompt &amp; knowledge base yang sama dengan bot asli.</div></div>
+          <div class="card"><h3>Lead tertangkap</h3><dl class="lead" id="s-lead"></dl></div>
+          <div class="card"><h3>System prompt <button class="btn small" id="s-prompt-btn">Tampilkan</button></h3><pre class="dark" id="s-prompt" hidden></pre></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- KNOWLEDGE BASE ---------- -->
+    <section data-view="kb" hidden>
+      <div class="page-head">
+        <h2>Knowledge base</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="k-brand" aria-label="Brand" style="width:auto"></select>
+          <button class="btn primary" id="k-add">Tambah item</button>
+        </div>
+      </div>
+      <p class="muted small" style="margin:0 0 12px">Teks bertanda <strong>[ISI …]</strong> dianggap belum ada: bot tidak akan mengarang bagian itu dan mengarahkan customer ke admin. Perubahan tersimpan otomatis dan langsung dipakai bot. <span id="k-summary"></span> <span id="k-status"></span></p>
+      <div class="stack" id="k-list"></div>
+    </section>
+
+    <!-- ---------- PENGATURAN ---------- -->
+    <section data-view="setting" hidden>
+      <div class="page-head">
+        <h2>Pengaturan bot</h2>
+        <div style="display:flex;gap:10px;align-items:center"><select id="p-brand" aria-label="Brand" style="width:auto"></select><span id="p-status" class="small"></span></div>
+      </div>
+      <div class="card"><div class="form" id="p-form"></div></div>
+    </section>
+
+    <!-- ---------- AKUN SOSMED ---------- -->
+    <section data-view="akun" hidden>
+      <div class="page-head"><h2>Akun sosmed</h2></div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Akun terhubung</h3>
+          <div class="tablewrap" id="a-list"></div>
+          <p class="small muted" style="margin:10px 0 0">Token akses tidak pernah ditampilkan lagi setelah disimpan. Untuk mengganti token, pakai tombol <em>Ganti token</em>.</p>
+        </div>
+        <form class="card" id="a-form">
+          <h3>Tambah akun</h3>
+          <div class="form">
+            <label class="f">Channel<select id="a-channel"><option value="instagram">Instagram</option><option value="messenger">Facebook Messenger (Halaman)</option><option value="whatsapp">WhatsApp</option></select></label>
+            <label class="f">Brand<select id="a-brand"></select></label>
+            <label class="f full">Nama/label<input type="text" id="a-label" placeholder="mis. IG ozzy.clothing"></label>
+            <label class="f full"><span id="a-id-label">ID akun</span><small id="a-id-help"></small><input type="text" id="a-id" required></label>
+            <label class="f" id="a-api-wrap">Jenis API Instagram<select id="a-api"><option value="instagram">Instagram Login (graph.instagram.com)</option><option value="facebook">Lewat Halaman FB (graph.facebook.com)</option></select></label>
+            <label class="f" id="a-sendas-wrap">ID Halaman FB terhubung<small>Hanya untuk IG lewat Halaman FB</small><input type="text" id="a-sendas"></label>
+            <label class="f full">Access token<small id="a-token-help"></small><input type="password" id="a-token" required autocomplete="off"></label>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:10px;align-items:center"><button class="btn primary">Simpan akun</button><span id="a-msg" class="small"></span></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ---------- PENGATURAN API ---------- -->
+    <section data-view="api" hidden>
+      <div class="page-head"><h2>Pengaturan API</h2><button class="btn" id="api-test">Tes koneksi Claude</button></div>
+      <p class="muted small" style="margin:0 0 14px">Kunci &amp; token disimpan di database Supabase yang hanya bisa dibaca oleh bot, dan <strong>tidak bisa dibaca kembali</strong> dari webapp (hanya 4 karakter terakhir yang ditampilkan). Kosongkan lalu simpan untuk menghapus. Perubahan langsung dipakai bot. <span id="api-test-msg"></span></p>
+      <div class="grid2" id="api-groups"></div>
+    </section>
+
+    <!-- ---------- STATUS & ADMIN ---------- -->
+    <section data-view="status" hidden>
+      <div class="page-head"><h2>Status &amp; admin</h2><button class="btn" id="st-refresh">Muat ulang</button></div>
+      <div class="grid2">
+        <div class="card"><h3>Sambungan ke Meta</h3><div id="st-webhook" class="stack small"></div></div>
+        <div class="card"><h3>Pengaturan API terbaca bot</h3><div id="st-secrets" class="small"></div></div>
+        <div class="card"><h3>Admin webapp</h3><div id="st-admins"></div>
+          <form id="st-add" style="display:flex;gap:8px;margin-top:10px"><input type="email" id="st-email" placeholder="email admin baru" required><button class="btn primary">Tambah</button></form>
+          <p class="small muted" style="margin:8px 0 0">Admin baru membuka webapp, pilih <em>Buat password untuk email admin</em>, lalu konfirmasi lewat email.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  // ================= KONFIGURASI =================
+  const SUPABASE_URL = "https://hfajdpkirsrewjsouybu.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ww58T3ISnMaRhd6bWtD55g__1112Evm"; // publishable key (aman dipakai di browser)
+  const ADMIN_API = SUPABASE_URL + "/functions/v1/meta-webhook/admin";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  const fmt = (d, opt) => new Intl.DateTimeFormat("id-ID", { timeZone:"Asia/Jakarta", ...opt }).format(new Date(d));
+  const jam = (d) => fmt(d, { hour:"2-digit", minute:"2-digit" });
+  const tgl = (d) => {
+    const x = new Date(d), now = new Date();
+    return x.toDateString() === now.toDateString() ? jam(d) : fmt(d, { day:"numeric", month:"short" }) + " " + jam(d);
+  };
+  const CH = { instagram:"IG", messenger:"FB", whatsapp:"WA" };
+  const CH_NAMA = { instagram:"Instagram DM", messenger:"Messenger", whatsapp:"WhatsApp" };
+  const LABEL_ALASAN = { siap_penawaran:"siap dibuatkan penawaran", nego_harga:"nego harga", komplain:"komplain", cek_pesanan:"cek pesanan", minta_admin:"minta bicara dengan admin", info_tidak_tersedia:"info belum tersedia", kirim_file_desain:"kirim file desain", order_besar:"order besar", pembayaran:"pembayaran", lainnya:"lainnya" };
+  const LEAD_FIELDS = [["nama","Nama"],["instansi","Instansi"],["segmen","Segmen"],["produk","Produk"],["jumlah_pcs","Jumlah"],["warna","Warna"],["deadline","Deadline"],["kota","Kota"],["kontak","Kontak"]];
+  const TOMBOL = { admin:{ title:"Teruskan ke admin", payload:"HANDOVER_ADMIN" }, lanjut:{ title:"Lanjut chat", payload:"LANJUT_BOT" } };
+
+  let toastTimer;
+  function toast(msg, err = false) {
+    const t = $("toast"); t.textContent = msg; t.className = "toast" + (err ? " err" : ""); t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), err ? 6000 : 2500);
+  }
+  function errMsg(e) { return (e && (e.message || e.error_description || e.error)) || String(e); }
+
+  async function adminApi(action, body = {}) {
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(ADMIN_API, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + (session?.access_token || ""), apikey:SUPABASE_KEY },
+      body: JSON.stringify({ action, ...body }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    return data;
+  }
+
+  // ================= STATE =================
+  const S = { user:null, brands:[], page:"inbox", convs:[], convId:null, filter:"semua" };
+  const brandName = (id) => S.brands.find((b) => b.id === id)?.nama || id;
+
+  function statusOf(c) {
+    if (c.status === "human" && (!c.human_until || new Date(c.human_until) > new Date())) return { cls:"human", label:"Admin" };
+    if (c.handover === "diminta") return { cls:"wait", label:"Perlu admin" };
+    if (c.handover === "ditawarkan") return { cls:"offer", label:"Ditawarkan" };
+    return { cls:"bot", label:"Bot" };
+  }
+
+  // ================= LOGIN =================
+  let loginMode = "login";
+  function setLoginMode(m) {
+    loginMode = m;
+    $("login-title").textContent = m === "login" ? "Masuk admin chat" : "Buat password admin";
+    $("login-desc").textContent = m === "login" ? "Khusus email yang terdaftar sebagai admin." : "Pakai email yang sudah didaftarkan sebagai admin. Setelah itu buka link konfirmasi di email, lalu masuk.";
+    $("l-submit").textContent = m === "login" ? "Masuk" : "Buat password";
+    $("l-pass").autocomplete = m === "login" ? "current-password" : "new-password";
+    $("l-switch").innerHTML = m === "login"
+      ? 'Pertama kali? <button type="button" data-mode="signup">Buat password untuk email admin</button>'
+      : 'Sudah punya password? <button type="button" data-mode="login">Masuk</button>';
+    $("l-msg").textContent = "";
+  }
+  $("l-switch").addEventListener("click", (e) => { const m = e.target.dataset?.mode; if (m) setLoginMode(m); });
+  $("f-login").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("l-email").value.trim().toLowerCase(), password = $("l-pass").value;
+    $("l-submit").disabled = true; $("l-msg").className = "small"; $("l-msg").textContent = "Memproses…";
+    try {
+      if (loginMode === "signup") {
+        const { error } = await sb.auth.signUp({ email, password, options:{ emailRedirectTo: location.origin } });
+        if (error) throw error;
+        $("l-msg").className = "small ok";
+        $("l-msg").textContent = "Cek inbox email untuk link konfirmasi. Setelah dikonfirmasi, kembali ke sini lalu masuk.";
+        setTimeout(() => setLoginMode("login"), 100);
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (err) {
+      $("l-msg").className = "small err";
+      const m = errMsg(err);
+      $("l-msg").textContent = /Email not confirmed/i.test(m) ? "Email belum dikonfirmasi. Buka link konfirmasi di email dulu." : /Invalid login/i.test(m) ? "Email atau password salah." : m;
+    } finally { $("l-submit").disabled = false; }
+  });
+  $("b-logout").addEventListener("click", () => sb.auth.signOut());
+
+  sb.auth.onAuthStateChange((_ev, session) => { setTimeout(() => onSession(session), 0); });
+
+  let started = false, checking = null;
+  async function onSession(session) {
+    if (!session) { started = false; checking = null; S.user = null; $("v-app").hidden = true; $("v-login").hidden = false; return; }
+    if ((started && S.user?.id === session.user.id) || checking === session.user.id) return;
+    checking = session.user.id;
+    S.user = session.user;
+    // Cek terdaftar sebagai admin
+    const { data, error } = await sb.from("admins").select("email").eq("email", session.user.email.toLowerCase()).maybeSingle();
+    if (error || !data) {
+      $("v-app").hidden = true; $("v-login").hidden = false;
+      $("l-msg").className = "small err";
+      $("l-msg").textContent = `Email ${session.user.email} belum terdaftar sebagai admin. Minta admin lain menambahkan email ini.`;
+      await sb.auth.signOut(); return;
+    }
+    started = true;
+    $("u-email").textContent = session.user.email;
+    $("v-login").hidden = true; $("v-app").hidden = false;
+    await loadBrands();
+    loadApiStatus();
+    show(location.hash.slice(1) || "inbox");
+    subscribeRealtime();
+  }
+
+  // ================= NAVIGASI =================
+  function show(page) {
+    if (!document.querySelector(`[data-view="${page}"]`)) page = "inbox";
+    S.page = page;
+    document.querySelectorAll("[data-view]").forEach((s) => (s.hidden = s.dataset.view !== page));
+    document.querySelectorAll("#nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.page === page)));
+    history.replaceState(null, "", "#" + page);
+    ({ inbox:loadInbox, sim:renderSim, kb:loadKb, setting:renderSetting, akun:loadAccounts, api:loadApi, status:loadStatus })[page]?.();
+  }
+  $("nav").addEventListener("click", (e) => { const b = e.target.closest("button[data-page]"); if (b) show(b.dataset.page); });
+  document.addEventListener("click", (e) => { const a = e.target.closest("[data-goto-page]"); if (a) { e.preventDefault(); show(a.dataset.gotoPage); } });
+
+  async function loadBrands() {
+    const { data, error } = await sb.from("brands").select("*").order("id");
+    if (error) return toast(errMsg(error), true);
+    S.brands = data;
+    const opts = S.brands.map((b) => `<option value="${esc(b.id)}">${esc(b.nama)}</option>`).join("");
+    $("i-brand").innerHTML = `<option value="">Semua brand</option>` + opts;
+    for (const id of ["s-brand", "k-brand", "p-brand", "a-brand"]) $(id).innerHTML = opts;
+    refreshIsiCount();
+  }
+  async function refreshIsiCount() {
+    const { count } = await sb.from("knowledge").select("id", { count:"exact", head:true }).eq("aktif", true).ilike("isi", "%[ISI%");
+    $("n-isi").textContent = count || ""; $("n-isi").hidden = !count;
+  }
+
+  // ================= INBOX =================
+  async function loadInbox() {
+    let q = sb.from("conversations").select("*").order("last_user_at", { ascending:false, nullsFirst:false }).limit(200);
+    if ($("i-brand").value) q = q.eq("brand_id", $("i-brand").value);
+    const { data, error } = await q;
+    if (error) return toast(errMsg(error), true);
+    S.convs = data;
+    // pesan terakhir untuk pratinjau
+    const ids = data.map((c) => c.id);
+    S.preview = {};
+    if (ids.length) {
+      const { data: msgs } = await sb.from("messages").select("conversation_id, role, text, created_at").in("conversation_id", ids.slice(0, 100)).order("id", { ascending:false }).limit(400);
+      for (const m of msgs || []) if (!S.preview[m.conversation_id]) S.preview[m.conversation_id] = m;
+    }
+    renderConvList();
+    if (S.convId) openConv(S.convId, false);
+  }
+  function renderConvList() {
+    const perlu = S.convs.filter((c) => statusOf(c).cls === "wait").length;
+    $("n-wait").textContent = perlu || ""; $("n-wait").hidden = !perlu;
+    const list = S.convs.filter((c) => {
+      const s = statusOf(c).cls;
+      return S.filter === "semua" || (S.filter === "perlu" && (s === "wait" || s === "offer")) || (S.filter === "human" && s === "human") || (S.filter === "bot" && s === "bot");
+    });
+    $("i-list").innerHTML = list.length ? list.map((c) => {
+      const s = statusOf(c), p = S.preview?.[c.id];
+      const nama = c.nama_customer || c.lead?.nama || `Customer ${String(c.user_id).slice(-5)}`;
+      return `<button class="conv" data-id="${c.id}" aria-current="${c.id === S.convId}">
+        <div class="row1"><strong>${esc(nama)}</strong><span class="pill ${s.cls}">${s.label}</span></div>
+        <div class="meta"><span class="ch ${c.channel}">${CH[c.channel]}</span>${esc(brandName(c.brand_id))} · ${c.last_user_at ? tgl(c.last_user_at) : "-"}</div>
+        ${p ? `<div class="prev">${p.role === "user" ? "" : p.role === "bot" ? "Bot: " : "Admin: "}${esc(p.text)}</div>` : ""}
+      </button>`;
+    }).join("") : `<div class="empty">${S.convs.length ? "Tidak ada percakapan untuk filter ini." : "Belum ada chat masuk. Setelah akun sosmed terhubung, chat customer muncul di sini secara langsung."}</div>`;
+  }
+  $("i-list").addEventListener("click", (e) => { const b = e.target.closest(".conv"); if (b) openConv(b.dataset.id); });
+  $("i-brand").addEventListener("change", loadInbox);
+  $("i-filter").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-f]"); if (!b) return;
+    S.filter = b.dataset.f;
+    $("i-filter").querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+    renderConvList();
+  });
+
+  async function openConv(id, scroll = true) {
+    S.convId = id;
+    $("inbox").classList.add("open");
+    document.querySelectorAll(".conv").forEach((b) => b.setAttribute("aria-current", String(b.dataset.id === id)));
+    const c = S.convs.find((x) => x.id === id) || (await sb.from("conversations").select("*").eq("id", id).maybeSingle()).data;
+    if (!c) return;
+    const [{ data: msgs }, { data: escs }] = await Promise.all([
+      sb.from("messages").select("*").eq("conversation_id", id).order("id", { ascending:true }).limit(300),
+      sb.from("escalations").select("*").eq("conversation_id", id).order("id", { ascending:false }).limit(20),
+    ]);
+    const s = statusOf(c);
+    const nama = c.nama_customer || c.lead?.nama || `Customer ${String(c.user_id).slice(-5)}`;
+    const brand = S.brands.find((b) => b.id === c.brand_id);
+    $("i-thread").innerHTML = `
+      <div class="thread-head">
+        <div class="who"><button class="btn small" id="t-back" title="Kembali ke daftar">←</button><span class="ch ${c.channel}">${CH[c.channel]}</span><strong>${esc(nama)}</strong><span class="pill ${s.cls}">${s.label}</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${s.cls === "human" ? `<button class="btn small" id="t-resume">Kembalikan ke bot</button>` : `<button class="btn small" id="t-takeover">Ambil alih (bot diam)</button>`}
+        </div>
+      </div>
+      <div class="small muted" style="padding:6px 14px;border-bottom:1px solid var(--line)">${s.cls === "human" ? `Bot diam sampai ${c.human_until ? tgl(c.human_until) + " WIB" : "dikembalikan"}.` : s.cls === "wait" ? "Customer menunggu admin. Balasan dari sini membuat bot diam " + (brand?.pause_jam_setelah_admin ?? 12) + " jam." : "Bot sedang menangani chat ini."}</div>
+      <div class="msgs" id="t-msgs">${(msgs || []).map((m) => `
+        <div class="msg ${m.role}"><div class="bubble">${(m.attachments || []).map((a) => `<span class="attach">${esc(a.type)}</span>\n`).join("")}${esc(m.text)}</div>
+        <div class="meta">${m.role === "user" ? "Customer" : m.role === "bot" ? "Bot" : "Admin"} · ${tgl(m.created_at)}</div></div>`).join("") || `<div class="empty">Belum ada pesan.</div>`}</div>
+      <form class="reply" id="t-reply"><textarea id="t-text" rows="1" placeholder="Balas sebagai admin… (terkirim ke ${CH_NAMA[c.channel]} customer)"></textarea><button class="btn primary" id="t-send">Kirim</button></form>`;
+    if (scroll) { const m = $("t-msgs"); m.scrollTop = m.scrollHeight; }
+    else { const m = $("t-msgs"); m.scrollTop = m.scrollHeight; }
+    $("t-back").onclick = () => $("inbox").classList.remove("open");
+    $("t-reply").onsubmit = async (e) => {
+      e.preventDefault();
+      const text = $("t-text").value.trim(); if (!text) return;
+      $("t-send").disabled = true;
+      try { await adminApi("reply", { conversation_id:c.id, text }); $("t-text").value = ""; toast("Terkirim ke customer"); await loadInbox(); }
+      catch (err) { toast("Gagal kirim: " + errMsg(err), true); }
+      finally { const b = $("t-send"); if (b) b.disabled = false; }
+    };
+    $("t-text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("t-reply").requestSubmit(); } });
+    const upd = async (patch, msg) => {
+      const { error } = await sb.from("conversations").update(patch).eq("id", c.id);
+      if (error) return toast(errMsg(error), true);
+      toast(msg); loadInbox();
+    };
+    if ($("t-resume")) $("t-resume").onclick = () => upd({ status:"bot", human_until:null, handover:null }, "Chat dikembalikan ke bot");
+    if ($("t-takeover")) $("t-takeover").onclick = () => upd({ status:"human", human_until:new Date(Date.now() + (brand?.pause_jam_setelah_admin ?? 12) * 3600e3).toISOString(), handover:null }, "Bot diam di chat ini");
+
+    const lead = c.lead || {};
+    $("i-side").innerHTML = `
+      <div class="card"><h3>Lead <span>${LEAD_FIELDS.filter(([k]) => lead[k]).length}/${LEAD_FIELDS.length}</span></h3>
+        <dl class="lead">${LEAD_FIELDS.map(([k, l]) => `<dt>${l}</dt><dd class="${lead[k] ? "" : "empty"}">${lead[k] ? esc(k === "jumlah_pcs" ? lead[k] + " pcs" : lead[k]) : "belum disebut"}</dd>`).join("")}</dl></div>
+      <div class="card"><h3>Analisis bot</h3>${c.intent ? `<p style="margin:0 0 6px"><span class="intent">${esc(c.intent)}</span></p>` : ""}<p style="margin:0" class="small">${esc(c.ringkasan || "Belum ada.")}</p></div>
+      <div class="card"><h3>Eskalasi</h3>${(escs || []).length ? escs.map((x) => `
+        <div class="esc"><div><strong>${esc(LABEL_ALASAN[x.alasan] || x.alasan)}</strong> · <span class="muted">${tgl(x.created_at)}</span></div>
+        <div class="muted">${esc(x.ringkasan)}</div>
+        <div style="display:flex;gap:6px;align-items:center"><span class="pill ${x.status === "baru" ? "wait" : x.status === "ditawarkan" ? "offer" : "off"}">${esc(x.status)}</span>
+        ${x.status !== "selesai" ? `<button class="btn small" data-esc="${x.id}">Tandai selesai</button>` : ""}</div></div>`).join("") : `<p class="small muted" style="margin:0">Belum ada.</p>`}</div>`;
+    $("i-side").querySelectorAll("[data-esc]").forEach((b) => b.onclick = async () => {
+      const { error } = await sb.from("escalations").update({ status:"selesai" }).eq("id", b.dataset.esc);
+      if (error) return toast(errMsg(error), true);
+      openConv(c.id, false);
+    });
+  }
+
+  let rtTimer = null;
+  function subscribeRealtime() {
+    sb.channel("inbox")
+      .on("postgres_changes", { event:"*", schema:"public", table:"messages" }, () => scheduleReload())
+      .on("postgres_changes", { event:"*", schema:"public", table:"conversations" }, () => scheduleReload())
+      .subscribe();
+  }
+  function scheduleReload() {
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(() => { if (S.page === "inbox") loadInbox(); }, 600);
+  }
+
+  // ================= SIMULATOR =================
+  const SKENARIO = {
+    ozzy: [["Sapaan","Halo kak"],["Tanya harga","Kak, harga polo bordir logo kantor berapa ya? Butuh sekitar 100 pcs"],["Order lengkap","Saya Dimas dari PT Sinar Abadi Semarang, mau pesan 150 pcs polo bordir navy, logo di dada kiri, deadline 20 Desember"],["Kirim logo","ini logo kantor kami kak",true],["Komplain","Kak pesanan seragam saya kok belum jadi ya, katanya minggu lalu selesai"],["Alamat outlet","Outlet Ozzy yang di Solo alamatnya di mana kak?"],["Minta rekening","Kak kirim nomor rekening dong buat DP"],["Ini bot?","Ini yang bales bot ya kak?"],["Di luar topik","Kak bisa bantu bikinin tugas kuliah saya?"]],
+    hemca: [["Sapaan","Halo kak"],["Harga polo","Polo Hemca harganya berapa kak? Yang lengan panjang ada?"],["Cek warna","Ada warna sage sama lilac nggak kak?"],["Ukuran","Kalau tinggi 170 berat 65 cocoknya size apa kak?"],["Cara beli","Belinya lewat mana kak? Di Shopee kok lebih mahal"],["Grosir","Kak kalau ambil 50 pcs buat kantor bisa harga grosir?"],["Ini bot?","Ini yang bales bot ya kak?"]],
+  };
+  const sim = { msgs:[], handover:null, handover_alasan:null, lead:{}, busy:false };
+  function simReset() { Object.assign(sim, { msgs:[], handover:null, handover_alasan:null, lead:{}, busy:false }); $("s-analisis").innerHTML = "Kirim pesan sebagai customer."; renderSim(); }
+  function konfirmasiAdmin(brand, sudah) {
+    if (!brand.perkenalkan_bot) return sudah ? "Sudah saya sampaikan ke tim ya Kak, mohon ditunggu sebentar 🙏 Kalau ada yang mau ditanyakan dulu, boleh langsung tulis di sini." : `Siap Kak, sudah saya sampaikan ke tim admin. Nanti dibalas langsung di chat ini pada jam kerja (${brand.jam_kerja}) ya. Kalau ada yang mau ditanyakan sambil nunggu, tanya aja Kak.`;
+    return sudah ? `Chat ini sudah diteruskan ke admin ${brand.nama} ya Kak, mohon ditunggu. Sambil menunggu, Kakak tetap bisa tanya ke saya di sini.` : `Siap Kak, chat ini sudah saya teruskan ke admin ${brand.nama}. Admin akan membalas di sini pada jam kerja (${brand.jam_kerja}). Sambil menunggu, Kakak tetap bisa tanya ke saya ya.`;
+  }
+  function renderSim() {
+    const brandId = $("s-brand").value || S.brands[0]?.id, ch = $("s-channel").value;
+    $("s-phone").dataset.channel = ch;
+    $("s-avatar").textContent = (brandName(brandId) || "?")[0];
+    $("s-name").textContent = brandId === "ozzy" && ch === "instagram" ? "ozzy.clothing" : brandName(brandId);
+    $("s-chips").innerHTML = (SKENARIO[brandId] || []).map(([l], i) => `<button type="button" data-sk="${i}">${esc(l)}</button>`).join("");
+    let aktif = -1; sim.msgs.forEach((m, i) => { if (m.buttons) aktif = i; });
+    if (aktif >= 0 && sim.msgs.slice(aktif + 1).some((m) => m.role === "customer")) aktif = -1;
+    $("s-chat").innerHTML = (sim.msgs.length ? "" : `<div class="note">Coba sebagai customer. Pesan tidak terkirim ke siapa pun.</div>`) + sim.msgs.map((m, i) => {
+      if (m.role === "note") return `<div class="note${m.warn ? " warn" : ""}">${esc(m.text)}</div>`;
+      const b = `<div class="pmsg ${m.role}"><div class="bubble">${m.attach ? "[gambar] " : ""}${esc(m.text)}</div><div class="meta">${m.role === "bot" ? (m.ms ? `Bot · ${(m.ms / 1000).toFixed(1)} dtk` : "Bot") : "Customer"}</div></div>`;
+      return b + (m.buttons && i === aktif ? `<div class="qr">${m.buttons.map((t) => `<button type="button" data-tb="${t.payload}">${esc(t.title)}</button>`).join("")}</div>` : "");
+    }).join("") + (sim.busy ? `<div class="typing"><i></i><i></i><i></i></div>` : "");
+    $("s-chat").scrollTop = $("s-chat").scrollHeight;
+    $("s-lead").innerHTML = LEAD_FIELDS.map(([k, l]) => `<dt>${l}</dt><dd class="${sim.lead[k] ? "" : "empty"}">${sim.lead[k] ? esc(sim.lead[k]) : "belum disebut"}</dd>`).join("");
+  }
+  async function simSend(text, attach = false, payload = null) {
+    if (sim.busy || (!text.trim() && !attach)) return;
+    const brand = S.brands.find((b) => b.id === $("s-brand").value);
+    sim.msgs.push({ role:"customer", text, attach, payload });
+    // Tombol ditekan
+    if (payload === TOMBOL.admin.payload) {
+      const sudah = sim.handover === "diminta";
+      sim.msgs.push({ role:"bot", text:konfirmasiAdmin(brand, sudah) });
+      if (!sudah) { sim.handover = "diminta"; sim.msgs.push({ role:"note", warn:true, text:"Diteruskan ke admin · notifikasi Telegram terkirim (di bot asli)" }); }
+      return renderSim();
+    }
+    if (payload === TOMBOL.lanjut.payload) { sim.handover = "lanjut_bot"; sim.msgs.push({ role:"note", text:"Customer memilih lanjut chat" }); }
+    sim.busy = true; renderSim();
+    try {
+      const history = sim.msgs.filter((m) => m.role === "customer" || m.role === "bot").map((m) => ({ role:m.role === "customer" ? "user" : "bot", text:m.text, attach:m.attach }));
+      const r = await adminApi("simulate", { brand_id:brand.id, channel:$("s-channel").value, history, handover:sim.handover, handover_alasan:sim.handover_alasan });
+      const d = r.decision;
+      sim.msgs.push({ role:"bot", text:d.balasan, ms:r.ms, buttons:r.rencana === "tawarkan" ? [TOMBOL.admin, TOMBOL.lanjut] : null });
+      sim.lead = { ...sim.lead, ...d.lead };
+      if (r.rencana === "tawarkan") { sim.handover = "ditawarkan"; sim.handover_alasan = d.alasan_eskalasi; sim.msgs.push({ role:"note", text:`Bot menawarkan pilihan · ${LABEL_ALASAN[d.alasan_eskalasi] || d.alasan_eskalasi} · admin belum dinotifikasi` }); }
+      if (r.rencana === "teruskan") { sim.handover = "diminta"; sim.msgs.push({ role:"note", warn:true, text:`Diteruskan ke admin · ${LABEL_ALASAN[d.alasan_eskalasi] || ""} · notifikasi terkirim (di bot asli)` }); }
+      $("s-analisis").innerHTML = `<p style="margin:0 0 6px"><span class="intent">${esc(d.intent)}</span> · keputusan: <strong>${esc(r.rencana)}</strong></p><p style="margin:0">${esc(d.ringkasan)}</p>`;
+    } catch (err) {
+      sim.msgs.push({ role:"note", warn:true, text:"Gagal: " + errMsg(err) });
+    } finally { sim.busy = false; renderSim(); }
+  }
+  $("s-form").addEventListener("submit", (e) => { e.preventDefault(); const v = $("s-input").value; $("s-input").value = ""; simSend(v); });
+  $("s-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-sk]"); if (!b) return; const [, t, a] = SKENARIO[$("s-brand").value][b.dataset.sk]; simSend(t, !!a); });
+  $("s-chat").addEventListener("click", (e) => { const b = e.target.closest("[data-tb]"); if (!b) return; const t = Object.values(TOMBOL).find((x) => x.payload === b.dataset.tb); simSend(t.title, false, t.payload); });
+  $("s-reset").addEventListener("click", simReset);
+  $("s-brand").addEventListener("change", simReset);
+  $("s-channel").addEventListener("change", simReset);
+  $("s-prompt-btn").addEventListener("click", async () => {
+    const pre = $("s-prompt");
+    if (!pre.hidden) { pre.hidden = true; $("s-prompt-btn").textContent = "Tampilkan"; return; }
+    pre.textContent = "Memuat…"; pre.hidden = false; $("s-prompt-btn").textContent = "Sembunyikan";
+    try { pre.textContent = (await adminApi("prompt", { brand_id:$("s-brand").value, channel:$("s-channel").value, handover:sim.handover, first_contact:!sim.msgs.some((m) => m.role === "bot") })).prompt; }
+    catch (err) { pre.textContent = "Gagal: " + errMsg(err); }
+  });
+
+  // ================= KNOWLEDGE BASE =================
+  let kbItems = [];
+  const isIsi = (k) => /\[ISI/i.test(k.isi || "");
+  async function loadKb() {
+    const { data, error } = await sb.from("knowledge").select("*").eq("brand_id", $("k-brand").value).order("urutan").order("id");
+    if (error) return toast(errMsg(error), true);
+    kbItems = data; renderKb();
+  }
+  function renderKbSummary() {
+    const n = kbItems.filter((k) => k.aktif && isIsi(k)).length;
+    $("k-summary").textContent = `${kbItems.length} item · ${kbItems.filter((k) => k.aktif).length} aktif · ${n} masih [ISI].`;
+  }
+  function renderKb() {
+    renderKbSummary();
+    $("k-list").innerHTML = kbItems.map((k) => `
+      <div class="kb-item${isIsi(k) ? " isi" : ""}${k.aktif ? "" : " off"}" data-id="${k.id}">
+        <div class="kb-row">
+          <input type="text" data-f="kategori" value="${esc(k.kategori)}" aria-label="Kategori">
+          <input type="text" data-f="judul" value="${esc(k.judul)}" aria-label="Judul">
+          <label class="check"><input type="checkbox" data-f="aktif" ${k.aktif ? "checked" : ""}> Aktif</label>
+          <button class="btn small danger" data-del="${k.id}">Hapus</button>
+        </div>
+        <textarea data-f="isi" rows="3" aria-label="Isi">${esc(k.isi)}</textarea>
+        ${isIsi(k) ? `<span class="flag">Belum lengkap: bagian [ISI] belum diisi</span>` : ""}
+      </div>`).join("") || `<div class="empty">Belum ada item.</div>`;
+  }
+  const kbTimers = {};
+  $("k-list").addEventListener("input", (e) => {
+    const item = e.target.closest(".kb-item"), f = e.target.dataset.f; if (!item || !f) return;
+    const k = kbItems.find((x) => String(x.id) === item.dataset.id);
+    k[f] = f === "aktif" ? e.target.checked : e.target.value;
+    item.classList.toggle("isi", isIsi(k)); item.classList.toggle("off", !k.aktif);
+    const flag = item.querySelector(".flag");
+    if (isIsi(k) && !flag) item.insertAdjacentHTML("beforeend", `<span class="flag">Belum lengkap: bagian [ISI] belum diisi</span>`);
+    if (!isIsi(k) && flag) flag.remove();
+    renderKbSummary();
+    $("k-status").textContent = "Menyimpan…";
+    clearTimeout(kbTimers[k.id]);
+    kbTimers[k.id] = setTimeout(async () => {
+      const { error } = await sb.from("knowledge").update({ kategori:k.kategori, judul:k.judul, isi:k.isi, aktif:k.aktif, updated_at:new Date().toISOString() }).eq("id", k.id);
+      $("k-status").innerHTML = error ? `<span class="err">Gagal: ${esc(errMsg(error))}</span>` : `<span class="ok">Tersimpan ${jam(new Date())}</span>`;
+      refreshIsiCount();
+    }, 700);
+  });
+  $("k-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    const k = kbItems.find((x) => String(x.id) === b.dataset.del);
+    if (!confirm(`Hapus item "${k.judul}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    const { error } = await sb.from("knowledge").delete().eq("id", k.id);
+    if (error) return toast(errMsg(error), true);
+    toast("Item dihapus"); loadKb(); refreshIsiCount();
+  });
+  $("k-add").addEventListener("click", async () => {
+    const urutan = (Math.max(0, ...kbItems.map((k) => k.urutan || 0)) || 0) + 10;
+    const { error } = await sb.from("knowledge").insert({ brand_id:$("k-brand").value, kategori:"FAQ", judul:"Item baru", isi:"[ISI: tulis jawaban]", aktif:true, urutan });
+    if (error) return toast(errMsg(error), true);
+    await loadKb(); refreshIsiCount();
+    const last = $("k-list").lastElementChild; last?.scrollIntoView({ block:"center" }); last?.querySelector('[data-f="judul"]')?.select();
+  });
+  $("k-brand").addEventListener("change", loadKb);
+
+  // ================= PENGATURAN BOT =================
+  const FORM = [
+    ["jam_kerja", "Jam kerja admin", "text", "Dipakai bot saat menjanjikan kapan admin membalas."],
+    ["nama_bot", "Nama bot", "text", "Dipakai hanya bila bot memperkenalkan diri sebagai asisten otomatis."],
+    ["gaya_bahasa", "Gaya bahasa", "textarea", "Nada dan sapaan bot.", true],
+    ["deskripsi_bisnis", "Deskripsi bisnis", "textarea", "", true],
+    ["aturan_tambahan", "Aturan tambahan dari tim", "textarea", "Instruksi khusus brand ini. Contoh: kapan harus oper ke admin.", true],
+    ["ambang_pcs_eskalasi", "Ambang oper ke admin (pcs)", "number", "Order sebanyak ini atau lebih dioper ke admin."],
+    ["pause_jam_setelah_admin", "Bot diam setelah admin membalas (jam)", "number", "Berlaku setelah admin benar-benar membalas manual."],
+  ];
+  function renderSetting() {
+    const b = S.brands.find((x) => x.id === $("p-brand").value); if (!b) return;
+    const tg = (k, label, help) => `<label class="toggle full"><input type="checkbox" data-k="${k}" ${b[k] ? "checked" : ""}><span>${label}<small>${help}</small></span></label>`;
+    $("p-form").innerHTML =
+      tg("bot_aktif", `Bot aktif untuk ${esc(b.nama)}`, "Kalau dimatikan, pesan customer hanya dicatat di Inbox dan tidak dibalas otomatis.") +
+      tg("tawarkan_pilihan_admin", `Tawarkan tombol "${TOMBOL.admin.title}" / "${TOMBOL.lanjut.title}" sebelum memanggil admin`, "Kalau dimatikan, bot langsung meneruskan ke admin (dan mengirim notifikasi) saat perlu eskalasi.") +
+      tg("perkenalkan_bot", "Perkenalkan diri sebagai asisten otomatis", "Mati (disarankan): bot membalas seperti admin manusia. Kalau customer bertanya serius \"ini bot ya?\", bot tetap menjawab jujur lalu menawarkan admin.") +
+      FORM.map(([k, label, type, help, full]) => {
+        const v = esc(b[k] ?? "");
+        const input = type === "textarea" ? `<textarea data-k="${k}" rows="3">${v}</textarea>` : `<input type="${type}" data-k="${k}" value="${v}" ${type === "number" ? 'min="1" step="1"' : ""}>`;
+        return `<label class="f${full ? " full" : ""}">${label}${help ? `<small>${help}</small>` : ""}${input}</label>`;
+      }).join("");
+  }
+  let pTimer;
+  function queueSetting() { $("p-status").textContent = "Menyimpan…"; clearTimeout(pTimer); pTimer = setTimeout(saveSetting, 700); }
+  async function saveSetting() {
+    const id = $("p-brand").value, patch = { updated_at:new Date().toISOString() };
+    for (const el of $("p-form").querySelectorAll("[data-k]")) {
+      const k = el.dataset.k;
+      if (el.type === "checkbox") patch[k] = el.checked;
+      else if (el.type === "number") { const n = Math.round(Number(el.value)); if (!(n >= 1)) { $("p-status").innerHTML = `<span class="err">Angka harus ≥ 1</span>`; return; } patch[k] = n; }
+      else { if (!el.value.trim() && k !== "aturan_tambahan") { $("p-status").innerHTML = `<span class="err">Kolom tidak boleh kosong</span>`; return; } patch[k] = el.value.trim(); }
+    }
+    const { error } = await sb.from("brands").update(patch).eq("id", id);
+    if (error) { $("p-status").innerHTML = `<span class="err">Gagal: ${esc(errMsg(error))}</span>`; return; }
+    Object.assign(S.brands.find((x) => x.id === id), patch);
+    $("p-status").innerHTML = `<span class="ok">Tersimpan ${jam(new Date())}</span>`;
+  }
+  $("p-form").addEventListener("input", queueSetting);
+  $("p-form").addEventListener("change", queueSetting);
+  $("p-brand").addEventListener("change", () => { clearTimeout(pTimer); $("p-status").textContent = ""; renderSetting(); });
+
+  // ================= AKUN SOSMED =================
+  const AKUN_HELP = {
+    instagram: { label:"ID akun Instagram (IG user ID)", id:"Angka ID akun IG Professional. Lihat di Meta App → Instagram → API setup, atau Graph API Explorer: me?fields=user_id.", token:"Token dari Meta App → Instagram → API setup with Instagram login → Generate token." },
+    messenger: { label:"ID Halaman Facebook (Page ID)", id:"Ada di Halaman FB → Tentang → Transparansi halaman, atau Meta Business Suite → Pengaturan.", token:"Page Access Token dari Meta App → Messenger → Messenger API Settings → Generate token." },
+    whatsapp: { label:"Phone number ID WhatsApp", id:"Meta App → WhatsApp → API Setup → Phone number ID (bukan nomor teleponnya).", token:"Token System User permanen dari Business Settings → System users (izin whatsapp_business_messaging)." },
+  };
+  function renderAkunForm() {
+    const ch = $("a-channel").value, h = AKUN_HELP[ch];
+    $("a-id-label").textContent = h.label; $("a-id-help").textContent = h.id; $("a-token-help").textContent = h.token;
+    $("a-api-wrap").hidden = ch !== "instagram";
+    $("a-sendas-wrap").hidden = !(ch === "instagram" && $("a-api").value === "facebook");
+  }
+  $("a-channel").addEventListener("change", renderAkunForm);
+  $("a-api").addEventListener("change", renderAkunForm);
+  async function loadAccounts() {
+    renderAkunForm();
+    const { data, error } = await sb.from("accounts").select("id, channel, account_id, brand_id, label, api, send_as_id, aktif, created_at").order("created_at");
+    if (error) return toast(errMsg(error), true);
+    $("a-list").innerHTML = data.length ? `<table class="t"><thead><tr><th>Akun</th><th>Brand</th><th>ID</th><th>Aktif</th><th></th></tr></thead><tbody>${data.map((a) => `
+      <tr><td><span class="ch ${a.channel}">${CH[a.channel]}</span> ${esc(a.label || CH_NAMA[a.channel])}${a.channel === "instagram" ? `<div class="small muted">${a.api === "instagram" ? "Instagram Login" : "lewat Halaman FB"}</div>` : ""}</td>
+      <td>${esc(brandName(a.brand_id))}</td><td><code>${esc(a.account_id)}</code></td>
+      <td><input type="checkbox" data-aktif="${a.id}" ${a.aktif ? "checked" : ""} aria-label="Aktif"></td>
+      <td style="white-space:nowrap"><button class="btn small" data-token="${a.id}">Ganti token</button> <button class="btn small danger" data-hapus="${a.id}">Hapus</button></td></tr>`).join("")}</tbody></table>`
+      : `<div class="empty">Belum ada akun. Tambahkan akun Instagram, Halaman Facebook, atau WhatsApp di form sebelah.</div>`;
+  }
+  $("a-list").addEventListener("change", async (e) => {
+    const id = e.target.dataset.aktif; if (!id) return;
+    const { error } = await sb.from("accounts").update({ aktif:e.target.checked }).eq("id", id);
+    if (error) { toast(errMsg(error), true); e.target.checked = !e.target.checked; } else toast(e.target.checked ? "Akun diaktifkan" : "Akun dinonaktifkan");
+  });
+  $("a-list").addEventListener("click", async (e) => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.hapus) {
+      if (!confirm("Hapus akun ini? Bot berhenti membalas chat dari akun ini. Riwayat chat tetap tersimpan.")) return;
+      const { error } = await sb.from("accounts").delete().eq("id", t.dataset.hapus);
+      if (error) return toast(errMsg(error), true);
+      toast("Akun dihapus"); loadAccounts();
+    }
+    if (t.dataset.token) {
+      const tok = prompt("Tempel access token baru:");
+      if (!tok || !tok.trim()) return;
+      const { error } = await sb.from("accounts").update({ access_token:tok.trim() }).eq("id", t.dataset.token);
+      if (error) return toast(errMsg(error), true);
+      toast("Token diperbarui");
+    }
+  });
+  $("a-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ch = $("a-channel").value;
+    const row = {
+      channel:ch, brand_id:$("a-brand").value, label:$("a-label").value.trim(), account_id:$("a-id").value.trim(),
+      access_token:$("a-token").value.trim(), api:ch === "instagram" ? $("a-api").value : "facebook",
+      send_as_id:ch === "instagram" && $("a-api").value === "facebook" ? ($("a-sendas").value.trim() || null) : null, aktif:true,
+    };
+    if (!/^\d+$/.test(row.account_id)) { $("a-msg").innerHTML = `<span class="err">ID akun harus berupa angka.</span>`; return; }
+    const { error } = await sb.from("accounts").insert(row); // tanpa .select(): token tidak bisa dibaca kembali
+    if (error) { $("a-msg").innerHTML = `<span class="err">${esc(/duplicate/i.test(error.message) ? "Akun dengan ID ini sudah terdaftar." : errMsg(error))}</span>`; return; }
+    $("a-msg").innerHTML = `<span class="ok">Akun tersimpan.</span>`;
+    $("a-form").reset(); renderAkunForm(); loadAccounts();
+  });
+
+  // ================= PENGATURAN API =================
+  const API_GROUPS = [
+    { title:"Claude (AI)", items:[
+      { key:"ANTHROPIC_API_KEY", label:"API key Claude", secret:true, wajib:true, help:"Dari console.anthropic.com → API Keys. Diawali sk-ant-." },
+      { key:"ANTHROPIC_MODEL", label:"Model AI", options:[["claude-haiku-5-5","Haiku 5.5: paling cepat & hemat (default)"],["claude-sonnet-5-5","Sonnet 5.5: lebih pintar, biaya sedang"],["claude-opus-5-5","Opus 5.5: paling pintar, paling mahal"]], help:"Bisa diganti kapan saja." },
+    ]},
+    { title:"Meta (Instagram, Messenger, WhatsApp)", items:[
+      { key:"META_APP_ID", label:"App ID", help:"Meta for Developers → App kamu → App settings → Basic." },
+      { key:"META_APP_SECRET", label:"App Secret", secret:true, wajib:true, help:"Di halaman yang sama (klik Show). Dipakai untuk memastikan pesan benar-benar dari Meta." },
+      { key:"META_VERIFY_TOKEN", label:"Verify token webhook", secret:true, wajib:true, gen:true, help:"Kata rahasia bebas. Isi yang sama persis di Meta App → Webhooks → Verify token." },
+      { key:"IG_APP_SECRET", label:"Instagram App Secret", secret:true, help:"Hanya jika memakai Instagram API with Instagram Login (App → Instagram → API setup)." },
+      { key:"GRAPH_VERSION", label:"Versi Graph API", help:"Biarkan kosong untuk default (v25.0)." },
+    ]},
+    { title:"Notifikasi admin", items:[
+      { key:"TELEGRAM_BOT_TOKEN", label:"Token bot Telegram", secret:true, help:"Buat bot lewat @BotFather di Telegram." },
+      { key:"TELEGRAM_CHAT_ID", label:"Chat ID Telegram", help:"ID grup/akun admin penerima notifikasi (mis. lewat @userinfobot)." },
+      { key:"ALERT_WEBHOOK_URL", label:"Webhook notifikasi lain", secret:true, help:"Opsional: URL yang menerima notifikasi eskalasi (mis. Make/Zapier)." },
+    ]},
+  ];
+  let apiStatus = {};
+  async function loadApiStatus() {
+    const { data, error } = await sb.rpc("app_settings_status");
+    if (error) { toast(errMsg(error), true); return false; }
+    apiStatus = Object.fromEntries((data || []).map((r) => [r.key, r]));
+    const kurang = API_GROUPS.flatMap((g) => g.items).filter((i) => i.wajib && !apiStatus[i.key]).length;
+    $("n-api").hidden = !kurang;
+    return true;
+  }
+  async function loadApi() {
+    if (!(await loadApiStatus())) return;
+    $("api-groups").innerHTML = API_GROUPS.map((g) => `
+      <div class="card"><h3>${esc(g.title)}</h3><div class="stack">${g.items.map((i) => {
+        const s = apiStatus[i.key];
+        const st = s ? `<span class="ok">✓ ${esc(s.preview)}</span> <span class="muted">· ${tgl(s.updated_at)}${s.updated_by ? " oleh " + esc(s.updated_by) : ""}</span>` : `<span class="${i.wajib ? "err" : "muted"}">${i.wajib ? "belum diisi (wajib)" : "belum diisi"}</span>`;
+        const input = i.options
+          ? `<select data-api="${i.key}"><option value="">${s ? "(tidak diubah)" : "Pilih model"}</option>${i.options.map(([v, l]) => `<option value="${v}" ${s?.preview === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`
+          : `<input type="${i.secret ? "password" : "text"}" data-api="${i.key}" placeholder="${s ? "isi untuk mengganti" : ""}" autocomplete="off" ${!i.secret && s ? `value="${esc(s.preview)}"` : ""}>`;
+        return `<div class="f" style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600">${esc(i.label)}${i.wajib ? ' <span class="err" style="font-weight:400">*</span>' : ""}
+          <small style="font-weight:400;color:var(--muted)">${esc(i.help)}</small>
+          <div style="display:flex;gap:6px">${input}${i.gen ? `<button class="btn small" type="button" data-gen="${i.key}" title="Buat kata acak">Acak</button>` : ""}<button class="btn small primary" type="button" data-save="${i.key}">Simpan</button>${s ? `<button class="btn small danger" type="button" data-clear="${i.key}">Hapus</button>` : ""}</div>
+          <small style="font-weight:400">${st}</small></div>`;
+      }).join("")}</div></div>`).join("");
+  }
+  async function saveApi(key, value) {
+    const { error } = await sb.rpc("set_app_setting", { p_key:key, p_value:value });
+    if (error) return toast(errMsg(error), true);
+    toast(value ? "Tersimpan" : "Dihapus");
+    loadApi();
+  }
+  $("api-groups").addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.save) {
+      const v = document.querySelector(`[data-api="${b.dataset.save}"]`).value.trim();
+      if (!v) return toast("Isi dulu nilainya", true);
+      if (b.dataset.save === "ANTHROPIC_API_KEY" && !v.startsWith("sk-ant-")) return toast("API key Claude biasanya diawali sk-ant-", true);
+      return saveApi(b.dataset.save, v);
+    }
+    if (b.dataset.clear) { if (confirm(`Hapus ${b.dataset.clear}? Bot tidak bisa memakai pengaturan ini lagi.`)) saveApi(b.dataset.clear, ""); return; }
+    if (b.dataset.gen) {
+      const arr = new Uint8Array(18); crypto.getRandomValues(arr);
+      const v = "ozzy-" + Array.from(arr, (x) => x.toString(16).padStart(2, "0")).join("");
+      const inp = document.querySelector(`[data-api="${b.dataset.gen}"]`); inp.type = "text"; inp.value = v;
+      navigator.clipboard?.writeText(v).then(() => toast("Dibuat & disalin. Klik Simpan, lalu tempel di Meta App → Webhooks."));
+    }
+  });
+  $("api-test").addEventListener("click", async () => {
+    $("api-test-msg").innerHTML = "Mengetes…"; $("api-test").disabled = true;
+    try {
+      const r = await adminApi("simulate", { brand_id:S.brands[0]?.id, channel:"instagram", history:[{ role:"user", text:"Halo kak" }] });
+      $("api-test-msg").innerHTML = `<span class="ok">Claude terhubung (${(r.ms / 1000).toFixed(1)} dtk): “${esc(r.decision.balasan)}”</span>`;
+    } catch (err) { $("api-test-msg").innerHTML = `<span class="err">Gagal: ${esc(errMsg(err))}</span>`; }
+    finally { $("api-test").disabled = false; }
+  });
+
+  // ================= STATUS & ADMIN =================
+  async function loadStatus() {
+    $("st-webhook").innerHTML = "Memuat…"; $("st-secrets").innerHTML = "";
+    try {
+      const s = await adminApi("status");
+      $("st-webhook").innerHTML = `
+        <div><strong>Callback URL</strong> (isi di Meta App → Webhooks untuk Instagram, Messenger/Page, dan WhatsApp):<br><code>${esc(s.webhook_url)}</code> <button class="btn small" id="st-copy">Salin</button></div>
+        <div><strong>Verify token</strong>: isi sama persis dengan secret <code>META_VERIFY_TOKEN</code> di Supabase.</div>
+        <div><strong>Field yang di-subscribe</strong>: Messenger/Page → <code>messages</code>, <code>messaging_postbacks</code>, <code>message_echoes</code>. Instagram → <code>messages</code>. WhatsApp → <code>messages</code>.</div>
+        <div class="muted">Model AI: <code>${esc(s.model)}</code> · Graph API: <code>${esc(s.graph_version)}</code> · jeda gabung pesan: ${s.debounce_ms / 1000} dtk</div>`;
+      $("st-copy").onclick = () => navigator.clipboard?.writeText(s.webhook_url).then(() => toast("URL disalin"));
+      const help = { ANTHROPIC_API_KEY:"Wajib agar bot bisa menjawab.", META_VERIFY_TOKEN:"Dipakai saat mendaftarkan webhook di Meta.", META_APP_SECRET:"Wajib: pesan tanpa tanda tangan valid ditolak.", META_APP_ID:"Membantu mengenali balasan bot vs admin.", TELEGRAM:"Opsional, untuk notifikasi eskalasi." };
+      $("st-secrets").innerHTML = `<table class="t"><tbody>${Object.entries(s.secrets).map(([k, v]) => `<tr><td><code>${k}</code><div class="muted">${help[k] || ""}</div></td><td>${v ? `<span class="ok">✓ terisi</span>` : `<span class="err">belum</span>`}</td></tr>`).join("")}</tbody></table>
+        <p class="muted" style="margin:10px 0 0">Isi lewat menu <a href="#api" data-goto-page="api">Pengaturan API</a>.</p>`;
+    } catch (err) { $("st-webhook").innerHTML = `<span class="err">${esc(errMsg(err))}</span>`; }
+    loadAdmins();
+  }
+  async function loadAdmins() {
+    const { data, error } = await sb.from("admins").select("*").order("created_at");
+    if (error) return toast(errMsg(error), true);
+    $("st-admins").innerHTML = `<table class="t"><tbody>${data.map((a) => `<tr><td>${esc(a.email)}${a.email === S.user.email.toLowerCase() ? ' <span class="muted">(kamu)</span>' : ""}</td><td style="text-align:right">${a.email === S.user.email.toLowerCase() ? "" : `<button class="btn small danger" data-rm="${esc(a.email)}">Hapus</button>`}</td></tr>`).join("")}</tbody></table>`;
+  }
+  $("st-admins").addEventListener("click", async (e) => {
+    const em = e.target.closest("[data-rm]")?.dataset.rm; if (!em) return;
+    if (!confirm(`Hapus ${em} dari admin? Email ini tidak bisa lagi membuka webapp.`)) return;
+    const { error } = await sb.from("admins").delete().eq("email", em);
+    if (error) return toast(errMsg(error), true);
+    loadAdmins();
+  });
+  $("st-add").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("st-email").value.trim().toLowerCase();
+    const { error } = await sb.from("admins").insert({ email });
+    if (error) return toast(/duplicate/i.test(error.message) ? "Email sudah terdaftar" : errMsg(error), true);
+    $("st-email").value = ""; toast("Admin ditambahkan"); loadAdmins();
+  });
+  $("st-refresh").addEventListener("click", loadStatus);
+
+  // mulai
+  sb.auth.getSession().then(({ data }) => onSession(data.session));
+})();
+</script>
+</body>
+</html>
